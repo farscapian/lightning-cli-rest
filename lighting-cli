@@ -1,0 +1,80 @@
+#!/bin/bash
+
+set -eu
+cd "$(dirname "$0")"
+
+ENV_FILE="$(pwd)/.env"
+if [ ! -f "$ENV_FILE" ]; then
+    echo "WARNING: you don't have a '.env' file specified. We created one for you. Fill it out!"
+
+    cat <<EOF > "$ENV_FILE"
+RUNE=
+REST_ENDPOINT=
+EOF
+    chmod +x "$ENV_FILE"
+
+    exit 1
+fi
+
+source "$ENV_FILE"
+
+if [ -z "$RUNE" ]; then
+    echo "ERROR: You MUST set the RUNE in your .env"
+    exit 1
+fi
+
+if [ -z "$REST_ENDPOINT" ]; then
+    echo "ERROR: You MUST set the REST_ENDPOINT in your .env"
+    exit 1
+fi
+
+COMMAND_TO_EXECUTE=
+IS_PARAMTERIZED=false
+
+
+COMMAND_TO_EXECUTE="$1"
+if [ -z "$COMMAND_TO_EXECUTE" ]; then
+    echo "ERROR: Please provide a command to execute."
+    exit 1
+fi
+
+if [ -n "${2:-}" ]; then
+    IS_PARAMTERIZED=true
+fi
+
+if [ "$IS_PARAMTERIZED" = true ] && [ -z "${3:-}" ]; then
+    echo "ERROR: You MUST provide key=value pairs when specifying a paramemtersized command."
+    exit 1
+fi
+
+json_object={}
+
+if [ "$IS_PARAMTERIZED" = true ]; then
+    # Initialize an empty JSON object
+    json_object="{"
+
+    # Loop through each command line argument
+    for KEY_VALUE_PAIR in "$@"; do
+        # Split the argument into key and value using '=' as delimiter
+        IFS='=' read -ra parts <<< "$KEY_VALUE_PAIR"
+        
+        # Check if the argument is in key=value format
+        if [ "${#parts[@]}" -eq 2 ]; then
+            key="${parts[0]}"
+            value="${parts[1]}"
+            
+            # Add the key-value pair to the JSON object
+            json_object+="\"$key\":\"$value\", "
+        else
+            echo "Invalid argument: $KEY_VALUE_PAIR. Skipping."
+        fi
+    done
+
+    json_object="${json_object%,*}}"
+
+fi
+
+
+CURL_OUTPUT=$(curl --silent -X 'POST' "https://$REST_ENDPOINT/v1/$COMMAND_TO_EXECUTE" -H 'accept: application/json' -H "Rune: $RUNE" -H 'Content-Type: application/json' -d "$json_object")
+
+echo "$CURL_OUTPUT" | jq
