@@ -66,7 +66,8 @@ if [ "$IS_PARAMTERIZED" = true ]; then
             # Add the key-value pair to the JSON object
             json_object+="\"$key\":\"$value\", "
         else
-            echo "Invalid argument: $KEY_VALUE_PAIR. Skipping."
+            echo "Invalid argument: $KEY_VALUE_PAIR."
+            exit 1
         fi
     done
 
@@ -77,4 +78,4 @@ fi
 
 CURL_OUTPUT=$(curl --silent -X 'POST' "https://$REST_ENDPOINT/v1/$COMMAND_TO_EXECUTE" -H 'accept: application/json' -H "Rune: $RUNE" -H 'Content-Type: application/json' -d "$json_object")
 
-echo "$CURL_OUTPUT" | jq
+echo "$CURL_OUTPUT"
