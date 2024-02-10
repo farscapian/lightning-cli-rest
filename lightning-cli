@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -exu
+set -eu
 cd "$(dirname "$0")"
 
 HTTP=false
@@ -57,6 +57,9 @@ if [ "$IS_PARAMTERIZED" = true ] && [ -z "${3:-}" ]; then
 fi
 
 json_object="{}"
+
+
+# TODO - ensure everything aft erh -k is in the key=value format
 
 if [ "$IS_PARAMTERIZED" = true ]; then
     # Initialize an empty JSON object
