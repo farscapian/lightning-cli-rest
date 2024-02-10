@@ -1,7 +1,15 @@
 #!/bin/bash
 
-set -eu
+set -exu
 cd "$(dirname "$0")"
+
+HTTP=false
+
+# Check if curl is installed
+if ! command -v curl &> /dev/null; then
+    echo "curl couldn't be found. Please install it to continue."
+    exit 1
+fi
 
 ENV_FILE="$(pwd)/.env"
 if [ ! -f "$ENV_FILE" ]; then
@@ -16,6 +24,7 @@ EOF
     exit 1
 fi
 
+# source the rune/rest endpoint
 source "$ENV_FILE"
 
 if [ -z "$RUNE" ]; then
@@ -31,12 +40,12 @@ fi
 COMMAND_TO_EXECUTE=
 IS_PARAMTERIZED=false
 
-
 COMMAND_TO_EXECUTE="$1"
 if [ -z "$COMMAND_TO_EXECUTE" ]; then
     echo "ERROR: Please provide a command to execute."
     exit 1
 fi
+
 
 if [ -n "${2:-}" ]; then
     IS_PARAMTERIZED=true
@@ -47,7 +56,7 @@ if [ "$IS_PARAMTERIZED" = true ] && [ -z "${3:-}" ]; then
     exit 1
 fi
 
-json_object={}
+json_object="{}"
 
 if [ "$IS_PARAMTERIZED" = true ]; then
     # Initialize an empty JSON object
@@ -65,9 +74,6 @@ if [ "$IS_PARAMTERIZED" = true ]; then
             
             # Add the key-value pair to the JSON object
             json_object+="\"$key\":\"$value\", "
-        else
-            echo "Invalid argument: $KEY_VALUE_PAIR."
-            exit 1
         fi
     done
 
@@ -75,7 +81,16 @@ if [ "$IS_PARAMTERIZED" = true ]; then
 
 fi
 
+PROTOCOL=https
+if [ "$HTTP" = true ]; then
+    PROTOCOL="http"
+fi
 
-CURL_OUTPUT=$(curl --silent -X 'POST' "https://$REST_ENDPOINT/v1/$COMMAND_TO_EXECUTE" -H 'accept: application/json' -H "Rune: $RUNE" -H 'Content-Type: application/json' -d "$json_object")
+RESPONSE=$(curl --silent -X 'POST' \
+        "$PROTOCOL://$REST_ENDPOINT/v1/$COMMAND_TO_EXECUTE" \
+        -H 'accept: application/json' \
+        -H "Rune: $RUNE" \
+        -H 'Content-Type: application/json' \
+        -d "$json_object")
 
-echo "$CURL_OUTPUT"
+echo "$RESPONSE"
